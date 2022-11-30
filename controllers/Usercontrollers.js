@@ -10,17 +10,19 @@ const createUser = async (req, res) => {
     const hashPassword = await bcrypt.hash(req.body.password, salt);
     const chekemail = await User.findOne({ email: req.body.email })
 
-    if (chekemail) {
-        res.send("email not exist")
+    if (chekemail){
+    return res.status(400).json({
+        error: 'Email ealrdy exist'
+    })
     } else {
-        await User.create({
+        const user = await User.create({
             username: req.body.username,
             email: req.body.email,
-            role: req.body.role,
+            role: 'client',
             password: hashPassword
         })
         try {
-            res.send('create')
+            res.send(user)
 
         } catch {
             res.send('error creating')
@@ -32,15 +34,21 @@ const createUser = async (req, res) => {
 const login = async (req, res) => {
 
     const user = await User.findOne({ email: req.body.email })
-    if (!user) return res.send('email not found')
+    if (!user)
+    return res.status(400).json({
+        error: 'Email Not Found'
+    })
 
     const password = await bcrypt.compare(req.body.password, user.password)
-    if (!password) return res.send('password not found')
+    if (!password) 
+    return res.status(400).json({
+        error: 'Password Not Found'
+    })
 
     const token = jwt.sign({ _id: user._id, role: user.role }, process.env.TOKEN_SECRET)
     res.cookie('token', token)
     const { _id, username, email, role } = user;
-    return res.send({
+    return res.status(200).send({
         token, user: { _id, username, email, role }
     })
 
@@ -50,16 +58,21 @@ const login = async (req, res) => {
 const forgetpassword = async (req, res) => {
     const user = await User.findOne({ email: req.body.email })
     if (!user) {
-        return res.status(400).json({ erreur: 'Not found user with this email' })
+        return res.status(400).json({
+             error: 'Not found user with this email' 
+            
+            })
     } else {
         const token = jwt.sign({ _id: user._id }, process.env.TOKEN_SECRET_RESET, { expiresIn: 3600 });
+        const {email} = user;
         transporter.sendMail({
             from: process.env.EMAIL,
             to: req.body.email,
             subject: "Réinitialisation de mot de passe pour votre compte Marhaba",
-            html: `<p>cliquer sur ce <a href="${process.env.HOSTNAME}/resetpassword/${token}">lien</a> pour réinitialiser votre mot de passe de votre compte Marhaba</p>`
+            html: `<p>cliquer sur ce <a href="http://localhost:3000/resetpassword/${token}">lien</a> pour réinitialiser votre mot de passe de votre compte Marhaba</p>`
         })
-            .then(() => { res.send(token) })
+       
+            .then(() => { res.send({token, user: {email}}) })
             .catch((error) => { res.send(error) })
     }
 }
