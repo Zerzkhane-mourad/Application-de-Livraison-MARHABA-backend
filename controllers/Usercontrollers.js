@@ -90,10 +90,6 @@ const resetpassword = async (req, res) => {
 }
 
 
-
-
-
-
 const signout = (req, res) => {
 
     res.clearCookie('token');
